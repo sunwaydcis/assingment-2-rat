@@ -25,13 +25,35 @@ object HotelData {
   val PROFIT_MARGIN = "Profit Margin"
   val VISITORS = "No. Of People"
 
-  //read csv file then returns a list of successfully parsed Booking objects
+  //read csv file and parse columns into Booking case class then returns a list of successfully parsed Booking objects
   def loadHotelDataset(filePath: String): List[Booking] = {
     var reader: Option[CSVReader] = None
     try {
       //open the csv file and read rows with headers
       reader = Some(CSVReader.open(new File(filePath)))
       val allRowsWithHeaders = reader.get.allWithHeaders()
+
+      allRowsWithHeaders.flatMap { row =>
+        val result = for {
+          price <- Try(row(BOOKING_PRICE).toDouble).toOption
+          discount <- Try(row(DISCOUNT).toDouble).toOption
+          profit <- Try(row(PROFIT_MARGIN).toDouble).toOption
+          visitors <- Try(row(VISITORS).toInt).toOption
+        } yield Booking(
+          originCountry = row(ORIGIN_COUNTRY).trim,
+          hotelName = row(HOTEL_NAME).trim,
+          bookingPrice = price,
+          discount = discount,
+          profitMargin = profit,
+          visitors = visitors
+        )
+
+        if (result.isEmpty) {
+          //print error if row cannot be parsed
+          println(s"Error parsing row.")
+        }
+        result
+      }
     } catch {
       //return error message and empty list if fail
       case e: Exception =>
