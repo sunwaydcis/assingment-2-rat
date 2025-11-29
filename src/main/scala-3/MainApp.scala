@@ -25,6 +25,24 @@ object HotelData {
   val PROFIT_MARGIN = "Profit Margin"
   val VISITORS = "No. Of People"
 
+  //read csv file then returns a list of successfully parsed Booking objects
+  def loadHotelDataset(filePath: String): List[Booking] = {
+    var reader: Option[CSVReader] = None
+    try {
+      //open the csv file and read rows with headers
+      reader = Some(CSVReader.open(new File(filePath)))
+      val allRowsWithHeaders = reader.get.allWithHeaders()
+    } catch {
+      //return error message and empty list if fail
+      case e: Exception =>
+        println(s"Error. Could not process $filePath")
+        List.empty[Booking]
+    } finally {
+      reader.foreach(_.close())
+    }
+  }
+}
+
 //test - read csv file and output rows
 object MainApp {
   def main(args: Array[String]): Unit = {
