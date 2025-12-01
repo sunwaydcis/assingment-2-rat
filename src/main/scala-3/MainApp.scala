@@ -41,7 +41,11 @@ object HotelData {
       reader = Some(CSVReader.open(new File(filePath)))
       val allRowsWithHeaders = reader.get.allWithHeaders()
 
-      allRowsWithHeaders.flatMap { row =>
+      allRowsWithHeaders.flatMap { rawRow =>
+
+        //sanitize column header names
+        val row = rawRow.map { case (key, value) => (key.trim, value)}
+
         val result = for {
           price <- Try(row(BOOKING_PRICE).toDouble).toOption
           discount <- Try(row(DISCOUNT).toDouble).toOption
@@ -64,7 +68,7 @@ object HotelData {
 
         if (result.isEmpty) {
           //print error if row cannot be parsed
-          println(s"Error parsing row.")
+            println(s"Error parsing row.")
         }
         result
       }
@@ -79,18 +83,26 @@ object HotelData {
   }
 }
 
-//test - read csv file and output rows
 object MainApp {
   def main(args: Array[String]): Unit = {
 
     //define filepath to dataset
     val filePath = "/Users/tim/Downloads/Hotel_Dataset.csv"
+    val dataset: List[Booking] = HotelData.loadHotelDataset(filePath)
 
-    //use CSVReader to handle parsing of csv file
-    val reader = CSVReader.open(new File(filePath))
-    val allRows = reader.allWithHeaders()
-    allRows.foreach(println)
-    reader.close()
+    //print error if dataset fails to load
+    if (dataset.isEmpty) {
+      println("Error. Failed to load dataset.")
+      return
+    }
+
+    val q1 = dataset
+      .groupBy(_.originCountry)
+      .view.mapValues(_.size)
+      .maxBy(_._2)
+
+    println(s"${q1._1} has the highest number of bookings (${q1._2}) in the dataset.")
+    
   }
 }
 
