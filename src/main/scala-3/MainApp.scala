@@ -5,6 +5,29 @@ import com.github.tototoshi.csv.CSVReader
 import scala.util.Try
 import scala.collection.mutable
 
+trait EconomicFactors {
+  def criteria: String
+
+  //return type is now list to handle ties
+  def findBestOptions(data: List[Booking]): List[Booking]
+
+  def formatValue(b: Booking): String
+
+  //loops through the list of same economical options
+  def printResult(data: List[Booking]): Unit = {
+    val winners = findBestOptions(data)
+
+    if (winners.isEmpty) {
+      println(s"No data found for: $criteria")
+    } else {
+      println(s"--- $criteria ---")
+      winners.foreach { b =>
+        println(s"  * ${b.hotelName} (${formatValue(b)})")
+      }
+    }
+  }
+}
+
 //case class to represent a single hotel booking record
 case class Booking(
   //only use the columns needed for analysis
@@ -19,6 +42,44 @@ case class Booking(
   noOfDays : Int,
   rooms: Int
 )
+
+class BestPriceStrategy extends EconomicFactors {
+  override def criteria: String = "Lowest Booking Price (Per Room)"
+
+  override def findBestOptions(data: List[Booking]): List[Booking] = {
+    if (data.isEmpty) return List.empty
+    //find min value
+    val minVal = data.map(b => b.bookingPrice / b.rooms).min
+    //return all min value
+    data.filter(b => (b.bookingPrice / b.rooms) == minVal)
+  }
+
+  override def formatValue(b: Booking): String = f"$$${b.bookingPrice / b.rooms}%.2f / room"
+}
+
+class BestDiscountStrategy extends EconomicFactors {
+  override def criteria: String = "Highest Discount"
+
+  override def findBestOptions(data: List[Booking]): List[Booking] = {
+    if (data.isEmpty) return List.empty
+    val maxVal = data.map(_.discount).max
+    data.filter(_.discount == maxVal)
+  }
+
+  override def formatValue(b: Booking): String = s"${b.discount}%"
+}
+
+class BestMarginStrategy extends EconomicFactors {
+  override def criteria: String = "Lowest Profit Margin"
+
+  override def findBestOptions(data: List[Booking]): List[Booking] = {
+    if (data.isEmpty) return List.empty
+    val minVal = data.map(_.profitMargin).min
+    data.filter(_.profitMargin == minVal)
+  }
+
+  override def formatValue(b: Booking): String = s"${b.profitMargin}%"
+}
 
 object HotelData {
   //map constants to CSV header names
@@ -122,13 +183,11 @@ object MainApp {
     }
 
     val q1 = dataset
-      .groupBy(_.originCountry)
+      .groupBy(_.destinationCountry)
       .view.mapValues(_.size)
       .maxBy(_._2)
 
+    println("Question 1")
     println(s"${q1._1} has the highest number of bookings (${q1._2}) in the dataset.")
-    
+    }
   }
-}
-
-
