@@ -222,11 +222,12 @@ class MostProfitableHotel extends ProfitPerPerson {
     if (data.isEmpty) return "No data."
 
     val grouped = data.groupBy(_.hotelName)
-
+    // Calculate the total profit for each hotel
     val stats = grouped.map { case (hotel, bookings) =>
       val totalProfit = bookings.map(calculateProfitPerPerson).sum
       (hotel, totalProfit)
     }
+    // Find the hotel with the highest profit value
     val best = stats.maxBy(_._2)
 
     f"The most profitable hotel is ${best._1} with a profit of SGD${best._2}%.2f per person"
