@@ -20,9 +20,8 @@ trait EconomicFactors {
     if (winners.isEmpty) {
       println(s"No data found for: $criteria")
     } else {
-      println(s"--- $criteria ---")
-      winners.foreach { b =>
-        println(s"  * ${b.hotelName} (${formatValue(b)})")
+        winners.foreach { b =>
+        println(s"${b.hotelName} (${formatValue(b)})")
       }
     }
   }
@@ -44,13 +43,13 @@ case class Booking(
 )
 
 class BestBalancedStrategy extends EconomicFactors {
-  override def criteria: String = "Best Overall Value (Price/Discount/Profit Margin)"
+  override def criteria: String = "Most Economical Hotel (Price/Discount/Profit Margin)"
 
   override def findBestOptions(data: List[Booking]): List[Booking] = {
     if (data.isEmpty)
       return List.empty
 
-    //rank hotels based on the criteria: lowest price/profit, highest discount
+    //rank hotels based on: lowest price/profit, highest discount
     val priceRanks = data.sortBy(b => b.bookingPrice / b.rooms).map(_.bookingID).zipWithIndex.toMap
     val discountRanks = data.sortBy(_.discount).reverse.map(_.bookingID).zipWithIndex.toMap
     val marginRanks = data.sortBy(_.profitMargin).map(_.bookingID).zipWithIndex.toMap
@@ -71,7 +70,7 @@ class BestBalancedStrategy extends EconomicFactors {
   //format value of price per room
   override def formatValue(b: Booking): String = {
     val pricePerRoom = b.bookingPrice / b.rooms
-    f"$$${pricePerRoom}%.2f | ${b.discount}%% Off | ${b.profitMargin}%% Margin"
+    f"SGD${pricePerRoom}%.2f | ${b.discount}%% Off | ${b.profitMargin}%% Profit Margin"
   }
 }
 
@@ -254,20 +253,20 @@ object MainApp {
       .view.mapValues(_.size)
       .maxBy(_._2)
 
+    println("Question 1 - Highest Number of Bookings")
+    println(s"${q1._1} has the highest number of bookings (${q1._2}) in the dataset.")
+
     //question 2
     val q2: List[EconomicFactors] = List(
       new BestBalancedStrategy()
     )
 
-    println("Question 1 - Highest Number of Bookings")
-    println(s"${q1._1} has the highest number of bookings (${q1._2}) in the dataset.")
-
-    println("\nQuestion 2 - Best Option Fulfilling All 3 Classes")
-
+    println("\nQuestion 2 - Most Economical Hotel (Price/Discount/Profit Margin)")
     q2.foreach { strategy =>
       strategy.printResult(dataset)
     }
 
+    //question 3
     println("\nQuestion 3 - The Most Profitable Hotel Per Person")
     val hotelProfit: StringConverter[Booking] = new MostProfitableHotel()
     println(hotelProfit.convert(dataset))
