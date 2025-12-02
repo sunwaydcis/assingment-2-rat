@@ -258,7 +258,7 @@ object MainApp {
       new BestBalancedStrategy()
     )
 
-    println("Question 1")
+    println("Question 1 - Highest Number of Bookings")
     println(s"${q1._1} has the highest number of bookings (${q1._2}) in the dataset.")
 
     println("\nQuestion 2 - Best Option Fulfilling All 3 Classes")
@@ -267,6 +267,7 @@ object MainApp {
       strategy.printResult(dataset)
     }
 
+    println("\nQuestion 3 - The Most Profitable Hotel Per Person")
     val hotelProfit: StringConverter[Booking] = new MostProfitableHotel()
     println(hotelProfit.convert(dataset))
     
