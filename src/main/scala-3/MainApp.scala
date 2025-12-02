@@ -43,6 +43,35 @@ case class Booking(
   rooms: Int
 )
 
+class BestBalancedStrategy extends EconomicFactors {
+  override def criteria: String = "Best Overall Value (All 3 Criteria)"
+
+  override def findBestOptions(data: List[Booking]): List[Booking] = {
+    if (data.isEmpty) return List.empty
+
+    val priceRanks = data.sortBy(b => b.bookingPrice / b.rooms).map(_.bookingID).zipWithIndex.toMap
+    val discountRanks = data.sortBy(_.discount).reverse.map(_.bookingID).zipWithIndex.toMap
+    val marginRanks = data.sortBy(_.profitMargin).map(_.bookingID).zipWithIndex.toMap
+
+    //calculate a score for every hotel
+    val scoredHotels = data.map { b =>
+      val totalScore = priceRanks(b.bookingID) + discountRanks(b.bookingID) + marginRanks(b.bookingID)
+      (b, totalScore)
+    }
+
+    //find what the best (lowest) score
+    val bestScore = scoredHotels.map(_._2).min
+
+    //filter the list to add every hotel option with same score
+    scoredHotels.filter(_._2 == bestScore).map(_._1)
+  }
+
+  override def formatValue(b: Booking): String = {
+    val pricePerRoom = b.bookingPrice / b.rooms
+    f"$$${pricePerRoom}%.2f | ${b.discount}%% Off | ${b.profitMargin}%% Margin"
+  }
+}
+
 class BestPriceStrategy extends EconomicFactors {
   override def criteria: String = "Lowest Booking Price (Per Room)"
 
@@ -187,7 +216,18 @@ object MainApp {
       .view.mapValues(_.size)
       .maxBy(_._2)
 
+    val q2: List[EconomicFactors] = List(
+      new BestBalancedStrategy()
+    )
+
     println("Question 1")
     println(s"${q1._1} has the highest number of bookings (${q1._2}) in the dataset.")
+
+    println("Question 2 - Best Option Fulfilling All 3 Classes")
+
+    q2.foreach { strategy =>
+      strategy.printResult(dataset)
+    }
+    
     }
   }
