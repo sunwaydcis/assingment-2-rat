@@ -217,6 +217,22 @@ abstract class ProfitPerPerson extends StringConverter[Booking] {
   }
 }
 
+class MostProfitableHotel extends ProfitPerPerson {
+  override def convert(data: List[Booking]): String = {
+    if (data.isEmpty) return "No data."
+
+    val grouped = data.groupBy(_.hotelName)
+
+    val stats = grouped.map { case (hotel, bookings) =>
+      val totalProfit = bookings.map(calculateProfitPerPerson).sum
+      (hotel, totalProfit)
+    }
+    val best = stats.maxBy(_._2)
+
+    f"The most profitable hotel is ${best._1} with a profit of SGD${best._2}%.2f per person"
+  }
+}
+
 //main execution
 object MainApp {
   def main(args: Array[String]): Unit = {
@@ -250,6 +266,9 @@ object MainApp {
     q2.foreach { strategy =>
       strategy.printResult(dataset)
     }
+
+    val hotelProfit: StringConverter[Booking] = new MostProfitableHotel()
+    println(hotelProfit.convert(dataset))
     
     }
   }
