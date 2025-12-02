@@ -33,6 +33,31 @@ object HotelData {
   val NO_OF_DAYS = "No of Days"
   val ROOMS = "Rooms"
 
+  //method to sanitize cell data, converts double to string and removes non-numeric characters
+  def cleanDouble(s: String): Option[Double] = {
+    val cleaned = s
+      .trim
+      .replace("%", "")
+      .replace(",", "")
+      .replace("/", "")
+      .replace(":", "")
+      .trim
+
+    Try(cleaned.toDouble).toOption
+  }
+
+  //method to sanitize cell data, converts int to string and removes non-numeric characters
+  def cleanInt(s: String): Option[Int] = {
+    val cleaned = s
+      .trim
+      .replace(",", "")
+      .replace("pax", "")
+      .replace(":", "")
+      .trim
+
+    Try(cleaned.toInt).toOption
+  }
+
   //read csv file and parse columns into Booking case class then returns a list of successfully parsed Booking objects
   def loadHotelDataset(filePath: String): List[Booking] = {
     var reader: Option[CSVReader] = None
@@ -47,12 +72,12 @@ object HotelData {
         val row = rawRow.map { case (key, value) => (key.trim, value)}
 
         val result = for {
-          price <- Try(row(BOOKING_PRICE).toDouble).toOption
-          discount <- Try(row(DISCOUNT).toDouble).toOption
-          profit <- Try(row(PROFIT_MARGIN).toDouble).toOption
-          visitors <- Try(row(VISITORS).toInt).toOption
-          noOfDays <- Try(row(NO_OF_DAYS).toInt).toOption
-          rooms <- Try(row(ROOMS).toInt).toOption
+          price    <- cleanDouble(row(BOOKING_PRICE))
+          discount <- cleanDouble(row(DISCOUNT))
+          profit   <- cleanDouble(row(PROFIT_MARGIN))
+          visitors <- cleanInt(row(VISITORS))
+          noOfDays <- cleanInt(row(NO_OF_DAYS))
+          rooms    <- cleanInt(row(ROOMS))
         } yield Booking(
           bookingID = row(BOOKING_ID).trim,
           originCountry = row(ORIGIN_COUNTRY).trim,
