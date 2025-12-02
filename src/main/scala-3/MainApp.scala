@@ -198,6 +198,18 @@ object HotelData {
   }
 }
 
+trait StringConverter[T] {
+  def convert(data: List[T]): String
+}
+
+abstract class ProfitPerPerson extends StringConverter[Booking] {
+  // Formula: ((Profit Margin * Price) / 100) / NoOfPeople
+  def calculateSpecificMetric(b: Booking): Double = {
+    if (b.visitors == 0) 0.0
+    else ((b.profitMargin * b.bookingPrice) / 100.0) / b.visitors
+  }
+}
+
 object MainApp {
   def main(args: Array[String]): Unit = {
 
@@ -223,7 +235,7 @@ object MainApp {
     println("Question 1")
     println(s"${q1._1} has the highest number of bookings (${q1._2}) in the dataset.")
 
-    println("Question 2 - Best Option Fulfilling All 3 Classes")
+    println("\nQuestion 2 - Best Option Fulfilling All 3 Classes")
 
     q2.foreach { strategy =>
       strategy.printResult(dataset)
