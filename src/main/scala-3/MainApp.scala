@@ -44,11 +44,13 @@ case class Booking(
 )
 
 class BestBalancedStrategy extends EconomicFactors {
-  override def criteria: String = "Best Overall Value (All 3 Criteria)"
+  override def criteria: String = "Best Overall Value (Price/Discount/Profit Margin)"
 
   override def findBestOptions(data: List[Booking]): List[Booking] = {
-    if (data.isEmpty) return List.empty
+    if (data.isEmpty)
+      return List.empty
 
+    //rank hotels based on the criteria: lowest price/profit, highest discount
     val priceRanks = data.sortBy(b => b.bookingPrice / b.rooms).map(_.bookingID).zipWithIndex.toMap
     val discountRanks = data.sortBy(_.discount).reverse.map(_.bookingID).zipWithIndex.toMap
     val marginRanks = data.sortBy(_.profitMargin).map(_.bookingID).zipWithIndex.toMap
@@ -66,6 +68,7 @@ class BestBalancedStrategy extends EconomicFactors {
     scoredHotels.filter(_._2 == bestScore).map(_._1)
   }
 
+  //format value of price per room
   override def formatValue(b: Booking): String = {
     val pricePerRoom = b.bookingPrice / b.rooms
     f"$$${pricePerRoom}%.2f | ${b.discount}%% Off | ${b.profitMargin}%% Margin"
@@ -90,7 +93,8 @@ class BestDiscountStrategy extends EconomicFactors {
   override def criteria: String = "Highest Discount"
 
   override def findBestOptions(data: List[Booking]): List[Booking] = {
-    if (data.isEmpty) return List.empty
+    if (data.isEmpty)
+      return List.empty
     val maxVal = data.map(_.discount).max
     data.filter(_.discount == maxVal)
   }
@@ -102,7 +106,8 @@ class BestMarginStrategy extends EconomicFactors {
   override def criteria: String = "Lowest Profit Margin"
 
   override def findBestOptions(data: List[Booking]): List[Booking] = {
-    if (data.isEmpty) return List.empty
+    if (data.isEmpty)
+      return List.empty
     val minVal = data.map(_.profitMargin).min
     data.filter(_.profitMargin == minVal)
   }
@@ -181,8 +186,8 @@ object HotelData {
           rooms = rooms
         )
 
+        //print error if row cannot be parsed
         if (result.isEmpty) {
-          //print error if row cannot be parsed
             println(s"Error parsing row.")
         }
         result
@@ -198,18 +203,21 @@ object HotelData {
   }
 }
 
+//convert the list of Booking items into a String
 trait StringConverter[T] {
   def convert(data: List[T]): String
 }
 
+//calculate the profit gained per person
 abstract class ProfitPerPerson extends StringConverter[Booking] {
   // Formula: ((Profit Margin * Price) / 100) / NoOfPeople
-  def calculateSpecificMetric(b: Booking): Double = {
+  def calculateProfitPerPerson(b: Booking): Double = {
     if (b.visitors == 0) 0.0
     else ((b.profitMargin * b.bookingPrice) / 100.0) / b.visitors
   }
 }
 
+//main execution
 object MainApp {
   def main(args: Array[String]): Unit = {
 
@@ -223,11 +231,13 @@ object MainApp {
       return
     }
 
+    //question 1
     val q1 = dataset
       .groupBy(_.destinationCountry)
       .view.mapValues(_.size)
       .maxBy(_._2)
 
+    //question 2
     val q2: List[EconomicFactors] = List(
       new BestBalancedStrategy()
     )
