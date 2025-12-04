@@ -237,6 +237,22 @@ class HotelPricing extends StringConverter[Booking] {
       //return a tuple with all details
       (name, city, country, minPrice, maxPrice, avgPrice)
     }
+
+    val sortedStats = stats.toList.sortBy { case (name, city, country, _, _, _) =>
+      (name, city, country)
+    }
+
+    val sb = new StringBuilder
+    sb.append("\nHotel Price Statistics (Per Room):\n")
+    sb.append(f"${"Hotel Name"}%-25s | ${"Location"}%-30s | ${"Min"}%-10s | ${"Max"}%-10s | ${"Average"}%-10s\n")
+    sb.append("-" * 100 + "\n")
+
+    sortedStats.foreach { case (name, city, country, min, max, avg) =>
+      val location = s"$city, $country"
+      sb.append(f"$name%-25s | $location%-30s | SGD$min%6.2f | SGD$max%6.2f | SGD$avg%6.2f\n")
+    }
+
+    sb.toString()
   }
 }
 
@@ -290,6 +306,32 @@ object MainApp {
     q2.foreach { strategy =>
       strategy.printResult(dataset)
     }
+
+    /*
+    //to print sorted hotels (avg/min/max price)
+    val priceStats: StringConverter[Booking] = new HotelPricing()
+    println(priceStats.convert(dataset))*/
+
+    /*
+    //line to print/check the number of hotels
+    //add map variables to check destination city/country
+    val numberOfHotels = dataset
+      .map(b => (b.hotelName))
+      .distinct
+      .size
+    println(s"Total number of unique hotels: $numberOfHotels\n")*/
+
+    //TO CHANGE - LOGIC TO GROUP BY HOTEL NAME, DESTINATION CITY, AND COUNTRY
+    /*//group by both destination city and country to differentiate locations
+      .groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
+      .view.mapValues(_.size)
+      .maxBy(_._2)
+
+    val ((hotelName, city, country), count) = q1
+
+    println("Question 1 - Highest Number of Bookings")
+    println(s"$hotelName ($city, $country) has the highest number of bookings ($count) in the dataset.")
+    */
 
     //question 3
     println("\nQuestion 3 - The Most Profitable Hotel Per Person")
