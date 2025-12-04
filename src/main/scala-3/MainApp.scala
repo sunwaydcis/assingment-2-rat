@@ -4,6 +4,7 @@ import com.github.tototoshi.csv
 import com.github.tototoshi.csv.CSVReader
 import scala.util.Try
 import scala.collection.immutable
+import scala.collection.mutable.StringBuilder
 
 trait EconomicFactors {
   def criteria: String
@@ -234,22 +235,34 @@ class HotelPricing extends StringConverter[Booking] {
       val maxPrice = pricePerRoom.max
       val avgPrice = pricePerRoom.sum / pricePerRoom.size
 
+      //calculate the range
+      val priceRange = maxPrice - minPrice
+
+      //calculate economical score: 1 - ((average - min) / (max - min))
+      //if Min equals Max, treat as 100% score
+      val rawScore =
+        if (priceRange == 0.0) 1.0
+        else 1.0 - ((avgPrice - minPrice) / priceRange)
+
+      val scorePercentage = rawScore * 100.0
+
       //return a tuple with all details
-      (name, city, country, minPrice, maxPrice, avgPrice)
+      (name, city, country, minPrice, maxPrice, avgPrice, scorePercentage)
     }
 
-    val sortedStats = stats.toList.sortBy { case (name, city, country, _, _, _) =>
+    val sortedStats = stats.toList.sortBy { case (name, city, country, _, _, _, _) =>
       (name, city, country)
     }
 
+    //use stringbuilder to format output
     val sb = new StringBuilder
     sb.append("\nHotel Price Statistics (Per Room):\n")
-    sb.append(f"${"Hotel Name"}%-25s | ${"Location"}%-30s | ${"Min"}%-10s | ${"Max"}%-10s | ${"Average"}%-10s\n")
+    sb.append(f"${"Hotel Name"}%-25s | ${"Location"}%-30s | ${"Min"}%-10s | ${"Max"}%-10s | ${"Average"}%-10s | ${"Score"}%-8s\n")
     sb.append("-" * 100 + "\n")
 
-    sortedStats.foreach { case (name, city, country, min, max, avg) =>
+    sortedStats.foreach { case (name, city, country, min, max, avg, score) =>
       val location = s"$city, $country"
-      sb.append(f"$name%-25s | $location%-30s | SGD$min%6.2f | SGD$max%6.2f | SGD$avg%6.2f\n")
+      sb.append(f"$name%-25s | $location%-30s | SGD$min%6.2f | SGD$max%6.2f | SGD$avg%6.2f | $score%5.1f%%\n")
     }
 
     sb.toString()
@@ -307,10 +320,10 @@ object MainApp {
       strategy.printResult(dataset)
     }
 
-    /*
+
     //to print sorted hotels (avg/min/max price)
     val priceStats: StringConverter[Booking] = new HotelPricing()
-    println(priceStats.convert(dataset))*/
+    println(priceStats.convert(dataset))
 
     /*
     //line to print/check the number of hotels
