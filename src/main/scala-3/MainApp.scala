@@ -38,6 +38,7 @@ case class Booking(
   profitMargin: Double,
   visitors: Int,
   destinationCountry: String,
+  destinationCity: String,
   noOfDays : Int,
   rooms: Int
 )
@@ -125,6 +126,7 @@ object HotelData {
   val PROFIT_MARGIN = "Profit Margin"
   val VISITORS = "No. Of People"
   val DESTINATION_COUNTRY = "Destination Country"
+  val DESTINATION_CITY = "Destination City"
   val NO_OF_DAYS = "No of Days"
   val ROOMS = "Rooms"
 
@@ -189,6 +191,7 @@ object HotelData {
       profitMargin = profit,
       visitors = visitors,
       destinationCountry = row(DESTINATION_COUNTRY).trim,
+      destinationCity = row(DESTINATION_CITY).trim,
       noOfDays = noOfDays,
       rooms = rooms
     )
@@ -215,7 +218,29 @@ abstract class ProfitPerPerson extends StringConverter[Booking] {
   }
 }
 
-class MostProfitableHotel extends ProfitPerPerson {
+//function to find the average, min, and max booking price of a hotel room
+class HotelPricing extends StringConverter[Booking] {
+  override def convert(data: List[Booking]): String = {
+    if (data.isEmpty)
+      return "No data."
+
+    //group hotels by name, destination city, and country
+    val grouped = data.groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
+
+    val stats = grouped.map { case ((name, city, country), bookings) =>
+      val pricePerRoom = bookings.map(b => b.bookingPrice / b.rooms)
+
+      val minPrice = pricePerRoom.min
+      val maxPrice = pricePerRoom.max
+      val avgPrice = pricePerRoom.sum / pricePerRoom.size
+
+      //return a tuple with all details
+      (name, city, country, minPrice, maxPrice, avgPrice)
+    }
+  }
+}
+
+      class MostProfitableHotel extends ProfitPerPerson {
   override def convert(data: List[Booking]): String = {
     if (data.isEmpty)
       return "No data."
