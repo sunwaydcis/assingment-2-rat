@@ -3,7 +3,7 @@ import java.io.File
 import com.github.tototoshi.csv
 import com.github.tototoshi.csv.CSVReader
 import scala.util.Try
-import scala.collection.mutable
+import scala.collection.immutable
 
 trait EconomicFactors {
   def criteria: String
@@ -50,6 +50,7 @@ class BestBalancedStrategy extends EconomicFactors {
       return List.empty
 
     //rank hotels based on: lowest price/profit, highest discount
+    //pre-calculate ranks to avoid sorting the entire list 3 times
     val priceRanks = data.sortBy(b => b.bookingPrice / b.rooms).map(_.bookingID).zipWithIndex.toMap
     val discountRanks = data.sortBy(_.discount).reverse.map(_.bookingID).zipWithIndex.toMap
     val marginRanks = data.sortBy(_.profitMargin).map(_.bookingID).zipWithIndex.toMap
@@ -60,11 +61,11 @@ class BestBalancedStrategy extends EconomicFactors {
       (b, totalScore)
     }
 
-    //find what the best (lowest) score
+    //find what the best (lowest) score is
     val bestScore = scoredHotels.map(_._2).min
 
-    //filter the list to add every hotel option with same score
-    scoredHotels.filter(_._2 == bestScore).map(_._1)
+    //look at every item in the list, transforms the result (b) and adds it to the final list in a single pass
+    scoredHotels.collect{case (b, totalScore) if totalScore == bestScore => b}
   }
 
   //format value of price per room
@@ -127,29 +128,19 @@ object HotelData {
   val NO_OF_DAYS = "No of Days"
   val ROOMS = "Rooms"
 
-  //method to sanitize cell data, converts double to string and removes non-numeric characters
-  def cleanDouble(s: String): Option[Double] = {
-    val cleaned = s
-      .trim
-      .replace("%", "")
-      .replace(",", "")
-      .replace("/", "")
-      .replace(":", "")
-      .trim
+  //regex to remove non-numeric characters (except decimal points)
+  private val Regex = """[^\d.]""".r
 
-    Try(cleaned.toDouble).toOption
+  //function to sanitize cell data, converts double to string and removes non-numeric characters
+  def cleanDouble(s: String): Option[Double] = {
+    //removes all non-digit/non-dot chars and parses
+    Try(Regex.replaceAllIn(s, "").toDouble).toOption
   }
 
-  //method to sanitize cell data, converts int to string and removes non-numeric characters
+  //function to sanitize cell data, converts int to string and removes non-numeric characters
   def cleanInt(s: String): Option[Int] = {
-    val cleaned = s
-      .trim
-      .replace(",", "")
-      .replace("pax", "")
-      .replace(":", "")
-      .trim
-
-    Try(cleaned.toInt).toOption
+    //removes all non-digit/non-dot chars and parses
+    Try(Regex.replaceAllIn(s, "").toInt).toOption
   }
 
   //read csv file and parse columns into Booking case class then returns a list of successfully parsed Booking objects
@@ -218,7 +209,8 @@ abstract class ProfitPerPerson extends StringConverter[Booking] {
 
 class MostProfitableHotel extends ProfitPerPerson {
   override def convert(data: List[Booking]): String = {
-    if (data.isEmpty) return "No data."
+    if (data.isEmpty)
+      return "No data."
 
     val grouped = data.groupBy(_.hotelName)
     // Calculate the total profit for each hotel
