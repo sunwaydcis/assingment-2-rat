@@ -139,7 +139,7 @@ object HotelData {
 
   //function to sanitize cell data, converts int to string and removes non-numeric characters
   def cleanInt(s: String): Option[Int] = {
-    //removes all non-digit/non-dot chars and parses
+    //remove all non-digit/non-dot chars and parses
     Try(Regex.replaceAllIn(s, "").toInt).toOption
   }
 
@@ -150,48 +150,52 @@ object HotelData {
       //open the csv file and read rows with headers
       reader = Some(CSVReader.open(new File(filePath)))
       val allRowsWithHeaders = reader.get.allWithHeaders()
-
       allRowsWithHeaders.flatMap { rawRow =>
-
-        //sanitize column header names
-        val row = rawRow.map { case (key, value) => (key.trim, value)}
-
-        val result = for {
-          price    <- cleanDouble(row(BOOKING_PRICE))
-          discount <- cleanDouble(row(DISCOUNT))
-          profit   <- cleanDouble(row(PROFIT_MARGIN))
-          visitors <- cleanInt(row(VISITORS))
-          noOfDays <- cleanInt(row(NO_OF_DAYS))
-          rooms    <- cleanInt(row(ROOMS))
-        } yield Booking(
-          bookingID = row(BOOKING_ID).trim,
-          originCountry = row(ORIGIN_COUNTRY).trim,
-          hotelName = row(HOTEL_NAME).trim,
-          bookingPrice = price,
-          discount = discount,
-          profitMargin = profit,
-          visitors = visitors,
-          destinationCountry = row(DESTINATION_COUNTRY).trim,
-          noOfDays = noOfDays,
-          rooms = rooms
-        )
-
-        //print error if row cannot be parsed
-        if (result.isEmpty) {
-            println(s"Error parsing row.")
-        }
-        result
+        parseRow(rawRow)
       }
     } catch {
       //return error message and empty list if fail
       case e: Exception =>
         println(s"Error. Could not process $filePath")
+        println(s"Error processing file: ${e.getMessage}")
         List.empty[Booking]
     } finally {
       reader.foreach(_.close())
     }
   }
-}
+
+  //function to parse row
+  private def parseRow(rawRow: Map[String, String]): Option[Booking] = {
+    //sanitize column header names
+    val row = rawRow.map { case (key, value) => (key.trim, value) }
+
+    val result = for {
+      price <- cleanDouble(row(BOOKING_PRICE))
+      discount <- cleanDouble(row(DISCOUNT))
+      profit <- cleanDouble(row(PROFIT_MARGIN))
+      visitors <- cleanInt(row(VISITORS))
+      noOfDays <- cleanInt(row(NO_OF_DAYS))
+      rooms <- cleanInt(row(ROOMS))
+    } yield Booking(
+      bookingID = row(BOOKING_ID).trim,
+      originCountry = row(ORIGIN_COUNTRY).trim,
+      hotelName = row(HOTEL_NAME).trim,
+      bookingPrice = price,
+      discount = discount,
+      profitMargin = profit,
+      visitors = visitors,
+      destinationCountry = row(DESTINATION_COUNTRY).trim,
+      noOfDays = noOfDays,
+      rooms = rooms
+    )
+    
+    //print error if row cannot be parsed
+    if (result.isEmpty) {
+      println(s"Error parsing row.")
+    }
+    result
+  }
+  }
 
 //convert the list of Booking items into a String
 trait StringConverter[T] {
