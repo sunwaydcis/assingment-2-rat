@@ -145,12 +145,16 @@ object HotelData {
 
   //read csv file and parse columns into Booking case class then returns a list of successfully parsed Booking objects
   def loadHotelDataset(filePath: String): List[Booking] = {
-    var reader: Option[CSVReader] = None
+    //open the csv file and read rows with headers. throw error if not found or cannot read
+    val file = new File(filePath)
+    if (!file.exists) {
+      println(s"File not found: $filePath")
+      return List.empty
+    }
+    val reader = CSVReader.open(file)
+
     try {
-      //open the csv file and read rows with headers
-      reader = Some(CSVReader.open(new File(filePath)))
-      val allRowsWithHeaders = reader.get.allWithHeaders()
-      allRowsWithHeaders.flatMap { rawRow =>
+      reader.allWithHeaders().flatMap { rawRow =>
         parseRow(rawRow)
       }
     } catch {
@@ -160,7 +164,7 @@ object HotelData {
         println(s"Error processing file: ${e.getMessage}")
         List.empty[Booking]
     } finally {
-      reader.foreach(_.close())
+      reader.close()
     }
   }
 
@@ -188,7 +192,7 @@ object HotelData {
       noOfDays = noOfDays,
       rooms = rooms
     )
-    
+
     //print error if row cannot be parsed
     if (result.isEmpty) {
       println(s"Error parsing row.")
