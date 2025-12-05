@@ -161,8 +161,10 @@ class HotelCriteria extends StringConverter[Booking] {
     //calculate economical score: 1 - ((average - min) / (max - min))
     //if Min equals Max, treat as 100% score
     val rawScore =
-      if (range == 0.0) 1.0
-        else 1.0 - ((avg - min) / range)
+      if (range == 0.0)
+        1.0
+        else
+          1.0 - ((avg - min) / range)
 
     CriteriaResult(min, max, avg, rawScore * 100.0)
   }
@@ -171,14 +173,19 @@ class HotelCriteria extends StringConverter[Booking] {
       //group hotels by name, destination city, and country
       val grouped = data.groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
 
-      val stats = grouped.map { case ((name, city, country), bookings) =>
+      //filter hotels that have >1 booking record
+      val validHotels = grouped.filter { case (_, bookings) =>
+        bookings.size > 1
+      }
+
+      val stats = validHotels.map { case ((name, city, country), bookings) =>
         val pricePerRoom = bookings.map(b => b.bookingPrice / b.rooms)
         val discount = bookings.map(b => b.discount)
         val profitMargin = bookings.map(b => b.profitMargin)
 
         //calculate each criteria and economical score
         val priceCriteria = calculateCriteria(pricePerRoom)
-        val discountCriteria = calculateCriteria(discount)  
+        val discountCriteria = calculateCriteria(discount)
         val profitCriteria = calculateCriteria(profitMargin)
         
         val econScore = (priceCriteria.score + discountCriteria.score + profitCriteria.score) / 3
