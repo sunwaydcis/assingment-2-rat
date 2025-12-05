@@ -84,9 +84,15 @@ object HotelData {
     val reader = CSVReader.open(file)
 
     try {
-      reader.allWithHeaders().flatMap { rawRow =>
+      val allBookings = reader.allWithHeaders().flatMap { rawRow =>
         parseRow(rawRow)
       }
+      //logic to remove duplicates using bookingID
+      allBookings
+        .groupBy(_.bookingID) //group records by bookingID
+        .map { case (_, rows) => rows.head } //keep only the first record for each bookingID
+        .toList
+
     } catch {
       //return error message and empty list if fail
       case e: Exception =>
