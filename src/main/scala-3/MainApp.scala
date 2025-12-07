@@ -199,32 +199,49 @@ class HotelCriteria extends HotelScoreCalculator {
   }
 }
 
-
-
-      class MostProfitableHotel extends ProfitPerPerson {
+class MostProfitableHotel extends HotelScoreCalculator {
   override def convert(data: List[Booking]): String = {
-    if (data.isEmpty)
-      return "No data."
+    if (data.isEmpty) return "No data."
 
-    val grouped = data.groupBy(_.hotelName)
-    // Calculate the total profit for each hotel
-    val stats = grouped.map { case (hotel, bookings) =>
-      val totalProfit = bookings.map(calculateProfitPerPerson).sum
-      (hotel, totalProfit)
+    //group record by name, city, country
+    val grouped = data.groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
+    val validHotels = grouped.filter { case (_, bookings) => bookings.size > 1 }
+
+    if (validHotels.isEmpty) return "Not enough data for Question 3."
+
+    val stats = validHotels.map { case ((name, city, country), bookings) =>
+      val visitorValues = bookings.map(_.visitors.toDouble)
+      val profitValues = bookings.map(_.profitMargin)
+
+      //inherit calculation logic
+      val visitorStats = calculateCriteria(visitorValues)
+
+      //average for profit
+      val avgProfit = profitValues.sum / profitValues.size
+
+      (name, city, country, visitorStats, avgProfit)
     }
-    // Find the hotel with the highest profit value
-    val best = stats.maxBy(_._2)
 
-    f"The most profitable hotel is ${best._1} with a profit of SGD${best._2}%.2f per person"
+    //find answer by average profit
+    val best = stats.maxBy(_._5)
+    val (name, city, country, vStats, avgProfit) = best
+
+    f"""
+       |The most profitable hotel is $name ($city, $country).
+       |----------------------------------------------------
+       |Average Profit Margin : $avgProfit%.2f%%
+       |Visitor Consistency   : ${vStats.score}%.2f%% (Score based on formula)
+       |Visitor Stats         : Min ${vStats.min.toInt}, Max ${vStats.max.toInt}, Avg ${vStats.avg}%.1f
+       |""".stripMargin
   }
 }
+
 
 //main execution
 object MainApp {
   def main(args: Array[String]): Unit = {
-
     //define filepath to dataset
-    val filePath = "/Users/tim/Downloads/Hotel_Dataset.csv"
+    val filePath = "C:\\Users\\ILLEGEAR\\Downloads\\Hotel_Dataset.csv"
     val dataset: List[Booking] = HotelData.loadHotelDataset(filePath)
 
     //print error if dataset fails to load
@@ -243,40 +260,13 @@ object MainApp {
     println(s"${q1._1} has the highest number of bookings (${q1._2}) in the dataset.")
 
     //question 2
-    /*val q2: List[EconomicFactors] = List(
-      new BestBalancedStrategy()
-    )
-
-    println("\nQuestion 2 - Most Economical Hotel (Price/Discount/Profit Margin)")
-    q2.foreach { strategy =>
-      strategy.printResult(dataset)
-    }*/
-
-
-    //to print sorted hotels (avg/min/max price/economical score)
+    println("\nQuestion 2 - The Most Economical Hotel")
     val criteria: StringConverter[Booking] = new HotelCriteria()
     println(criteria.convert(dataset))
 
-    /*
-    //line to print/check the number of hotels
-    //add map variables to check destination city/country
-    val numberOfHotels = dataset
-      .map(b => (b.hotelName))
-      .distinct
-      .size
-    println(s"Total number of unique hotels: $numberOfHotels\n")*/
-
-    //TO CHANGE - LOGIC TO GROUP BY HOTEL NAME, DESTINATION CITY, AND COUNTRY
-    /*//group by both destination city and country to differentiate locations
-      .groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
-      .view.mapValues(_.size)
-      .maxBy(_._2)
-    */
-
     //question 3
-    println("\nQuestion 3 - The Most Profitable Hotel Per Person")
+    println("\nQuestion 3 - The Most Profitable Hotel")
     val hotelProfit: StringConverter[Booking] = new MostProfitableHotel()
     println(hotelProfit.convert(dataset))
-    
-    }
   }
+}
