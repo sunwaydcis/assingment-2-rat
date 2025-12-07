@@ -143,12 +143,24 @@ trait StringConverter[T] {
   def convert(data: List[T]): String
 }
 
-//calculate the profit gained per person
-abstract class ProfitPerPerson extends StringConverter[Booking] {
-  // Formula: ((Profit Margin * Price) / 100) / NoOfPeople
-  def calculateProfitPerPerson(b: Booking): Double = {
-    if (b.visitors == 0) 0.0
-    else ((b.profitMargin * b.bookingPrice) / 100.0) / b.visitors
+//parent class with formula for Q2 & Q3
+abstract class HotelScoreCalculator extends StringConverter[Booking] {
+  // Helper case class to hold calculated results
+  case class CriteriaResult(min: Double, max: Double, avg: Double, score: Double)
+
+  def calculateCriteria(values: List[Double]): CriteriaResult = {
+    val min = values.min
+    val max = values.max
+    val avg = values.sum / values.size
+    val range = max - min
+
+    //calculate economical score
+
+    val rawScore =
+      if (range == 0.0) 1.0
+      else 1.0 - ((avg - min) / range)//if Min equals Max treat as 100% score
+
+    CriteriaResult(min, max, avg, rawScore * 100.0)
   }
 }
 
