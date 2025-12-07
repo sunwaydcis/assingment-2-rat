@@ -164,81 +164,41 @@ abstract class HotelScoreCalculator extends StringConverter[Booking] {
   }
 }
 
-//function to find the average, min, and max booking price of a hotel room
-class HotelCriteria extends StringConverter[Booking] {
-  //helper case class to hold calculated results
-  case class CriteriaResult(min: Double, max: Double, avg: Double, score: Double)
-
-  //calculate criteria values for booking price, discount, and profit margin
-  private def calculateCriteria(values: List[Double]): CriteriaResult = {
-    val min = values.min
-    val max = values.max
-    val avg = values.sum / values.size
-    val range = max - min
-
-    //calculate economical score: 1 - ((average - min) / (max - min))
-    //if Min equals Max, treat as 100% score
-    val rawScore =
-      if (range == 0.0)
-        1.0
-        else
-          1.0 - ((avg - min) / range)
-
-    CriteriaResult(min, max, avg, rawScore * 100.0)
-  }
-
+//find the average, min, and max booking price of a hotel room
+class HotelCriteria extends HotelScoreCalculator {
   override def convert(data: List[Booking]): String = {
-      //group hotels by name, destination city, and country
-      val grouped = data.groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
+    //group hotels 
+    val grouped = data.groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
 
-      //filter hotels that have >1 booking record
-      val validHotels = grouped.filter { case (_, bookings) =>
-        bookings.size > 1
-      }
+    //filter hotels with more than 1 record
+    val validHotels = grouped.filter { case (_, bookings) =>
+      bookings.size > 1
+    }
 
-      val stats = validHotels.map { case ((name, city, country), bookings) =>
-        val pricePerRoom = bookings.map(b => b.bookingPrice / b.rooms)
-        val discount = bookings.map(b => b.discount)
-        val profitMargin = bookings.map(b => b.profitMargin)
+    val stats = validHotels.map { case ((name, city, country), bookings) =>
+      val pricePerRoom = bookings.map(b => b.bookingPrice / b.rooms)
+      val discount = bookings.map(b => b.discount)
+      val profitMargin = bookings.map(b => b.profitMargin)
 
-        //calculate each criteria and economical score
-        val priceCriteria = calculateCriteria(pricePerRoom)
-        val discountCriteria = calculateCriteria(discount)
-        val profitCriteria = calculateCriteria(profitMargin)
-        
-        val econScore = (priceCriteria.score + discountCriteria.score + profitCriteria.score) / 3
+      //calculate each criteria and economical score
+      val priceCriteria = calculateCriteria(pricePerRoom)
+      val discountCriteria = calculateCriteria(discount)
+      val profitCriteria = calculateCriteria(profitMargin)
 
-        //return a tuple with all details
-        (name, city, country, priceCriteria, discountCriteria, profitCriteria, econScore)
-      }
+      val econScore = (priceCriteria.score + discountCriteria.score + profitCriteria.score) / 3
 
-      val sortedStats = stats.toList.sortBy { case (name, city, country, _, _, _, _) =>
-        (name, city, country)
-      }
+      //return all details in a tuple
+      (name, city, country, priceCriteria, discountCriteria, profitCriteria, econScore)
+    }
 
-      //output most economical hotel
-      val mostEconomical = stats.maxBy(_._7)
-      val (name, city, country, _, _, _, score) = mostEconomical
-      f"\nThe most economical hotel based on all 3 criteria is $name ($city, $country) with an overall economical score of $score%.2f%%"
+    //output most economical hotel
+    val mostEconomical = stats.maxBy(_._7)
+    val (name, city, country, _, _, _, score) = mostEconomical
 
-/*
-    //use stringbuilder to format output
-      val sb = new StringBuilder
-
-      // --- TABLE 1: PRICE STATISTICS ---
-      sb.append("\n=== PART A: PRICE STATISTICS (Per Room) ===\n")
-      sb.append(f"${"Hotel Name"}%-25s | ${"Location"}%-30s | ${"Min"}%-10s | ${"Max"}%-10s | ${"Avg"}%-10s | ${"Score"}%-8s\n")
-      sb.append("-" * 110 + "\n")
-
-      sortedStats.foreach { case (name, city, country, p, _, _, _) =>
-        val loc = s"$city, $country"
-        sb.append(f"$name%-25s | $loc%-30s | SGD${p.min}%6.2f | SGD${p.max}%6.2f | SGD${p.avg}%6.2f | ${p.score}%5.1f%%\n")
-      }
-
-      sb.toString()*/
-
+    f"\nThe most economical hotel based on all 3 criteria is $name ($city, $country) with an overall economical score of $score%.2f%%"
   }
 }
+
 
 
       class MostProfitableHotel extends ProfitPerPerson {
