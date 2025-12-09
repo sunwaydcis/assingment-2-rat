@@ -6,26 +6,9 @@ import scala.util.Try
 import scala.collection.immutable
 import scala.collection.mutable.StringBuilder
 
-trait EconomicFactors {
-  def criteria: String
-
-  //return type is now list to handle ties
-  def findBestOptions(data: List[Booking]): List[Booking]
-
-  def formatValue(b: Booking): String
-
-  //loops through the list of same economical options
-  def printResult(data: List[Booking]): Unit = {
-    val winners = findBestOptions(data)
-
-    if (winners.isEmpty) {
-      println(s"No data found for: $criteria")
-    } else {
-        winners.foreach { b =>
-        println(s"${b.hotelName} (${formatValue(b)})")
-      }
-    }
-  }
+//convert the list of booking items into a String
+trait StringConverter[T] {
+  def convert(data: List[T]): String
 }
 
 //case class to represent a single hotel booking record
@@ -136,11 +119,6 @@ object HotelData {
     }
     result
   }
-  }
-
-//convert the list of Booking items into a String
-trait StringConverter[T] {
-  def convert(data: List[T]): String
 }
 
 //parent class with formula for Q2 & Q3
