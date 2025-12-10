@@ -121,59 +121,86 @@ object HotelData {
   }
 }
 
+//steps:
+//1. sorting hotels by name/city/country
+//2. find avg of criterias
+//3. find the min max range from the set of averages
+//4. calculating score
+//5. ranking based on score
 //parent class with formula for Q2 & Q3
 abstract class HotelScoreCalculator extends StringConverter[Booking] {
-  // Helper case class to hold calculated results
-  case class CriteriaResult(min: Double, max: Double, avg: Double, score: Double)
+  //helper case class to hold calculated results
+  case class LocalStats(min: Double, max: Double, avg: Double)
 
-  def calculateCriteria(values: List[Double]): CriteriaResult = {
-    val min = values.min
-    val max = values.max
-    val avg = values.sum / values.size
-    val range = max - min
+  def calculateLocalStats(values: List[Double]): LocalStats = {
+    if (values.isEmpty)
+      return LocalStats(0.0, 0.0, 0.0)
+    LocalStats(values.min, values.max, values.sum / values.size)
+  }
 
-    //calculate economical score
+  //calculate economical score
+  def calculateCriteria(value: Double, globalMin: Double, globalMax: Double, lowIsBetter: Boolean): Double = {
+    val range = globalMax - globalMin
 
-    val rawScore =
-      if (range == 0.0) 1.0
-      else 1.0 - ((avg - min) / range)//if Min equals Max treat as 100% score
+    //if all averages are identical, return score of 100
+    if (range == 0.0)
+      return 100.0
 
-    CriteriaResult(min, max, avg, rawScore * 100.0)
+    //range from 0.0 (globalMin) to 1.0 (globalMax)
+    val normalized = (value - globalMin) / globalMax
+
+    //if low price/profit is better, invert score. if high discount is better, use direct normalized score
+    if (lowIsBetter) 100.0 - (normalized * 100.0)
+      else normalized * 100.0
   }
 }
 
-//find the average, min, and max booking price of a hotel room
+//find the average of each criteria
 class HotelCriteria extends HotelScoreCalculator {
   override def convert(data: List[Booking]): String = {
-    //group hotels 
+    if (data.isEmpty)
+      return "No data."
+
+    //group hotels
     val grouped = data.groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
 
-    //filter hotels with more than 1 record
-    val validHotels = grouped.filter { case (_, bookings) =>
-      bookings.size > 1
+    val hotelAverages = grouped.map { case (key @ (name, city, country), bookings) =>
+      val avgPrice = bookings.map(b => b.bookingPrice / b.rooms).sum / bookings.size
+      val avgDiscount = bookings.map(_.discount).sum / bookings.size
+      val avgProfit = bookings.map(_.profitMargin).sum / bookings.size
+
+      (key, avgPrice, avgDiscount, avgProfit)
+    //convert tuple to list
+    }.toList
+
+    //find min max range from the set of averages for all 3 criteria
+    val allPrices = hotelAverages.map(_._2)
+    val allDiscounts = hotelAverages.map(_._3)
+    val allProfits = hotelAverages.map(_._4)
+
+    val priceMinMax = (allPrices.min, allPrices.max)
+    val discountMinMax = (allDiscounts.min, allDiscounts.max)
+    val profitMinMax = (allProfits.min, allProfits.max)
+
+    val scoredHotels = hotelAverages.map { case ((name, city, country), avgPrice, avgDiscount, avgProfit) =>
+      val priceScore = calculateCriteria(avgPrice, priceMinMax._1, priceMinMax._2, lowIsBetter = true)
+      val discountScore = calculateCriteria(avgDiscount, discountMinMax._1, discountMinMax._2, lowIsBetter = false)
+      val profitScore = calculateCriteria(avgProfit, profitMinMax._1, profitMinMax._2, lowIsBetter = true)
+
+      //combine scores
+      val econScore = (priceScore + discountScore + profitScore) / 3
+
+      (name, city, country, econScore)
     }
 
-    val stats = validHotels.map { case ((name, city, country), bookings) =>
-      val pricePerRoom = bookings.map(b => b.bookingPrice / b.rooms)
-      val discount = bookings.map(b => b.discount)
-      val profitMargin = bookings.map(b => b.profitMargin)
+    //rank based on score
+    val mostEconomical = scoredHotels.maxBy(_._4)
+    val (name, city, country, score) = mostEconomical
 
-      //calculate each criteria and economical score
-      val priceCriteria = calculateCriteria(pricePerRoom)
-      val discountCriteria = calculateCriteria(discount)
-      val profitCriteria = calculateCriteria(profitMargin)
-
-      val econScore = (priceCriteria.score + discountCriteria.score + profitCriteria.score) / 3
-
-      //return all details in a tuple
-      (name, city, country, priceCriteria, discountCriteria, profitCriteria, econScore)
-    }
-
-    //output most economical hotel
-    val mostEconomical = stats.maxBy(_._7)
-    val (name, city, country, _, _, _, score) = mostEconomical
-
-    f"\nThe most economical hotel based on all 3 criteria is $name ($city, $country) with an overall economical score of $score%.2f%%"
+    val result = scoredHotels.sortBy(_._4).reverse.map { case (n, c, s, score) =>
+      f"- $n ($s, $c): $score%.2f%%"
+    }.mkString("\n")
+    f"""The most economical hotel is $name ($city, $country) with an overall score of $score%.2f%%."""
   }
 }
 
@@ -183,11 +210,10 @@ class MostProfitableHotel extends HotelScoreCalculator {
 
     //group record by name, city, country
     val grouped = data.groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
-    val validHotels = grouped.filter { case (_, bookings) => bookings.size > 1 }
 
-    if (validHotels.isEmpty) return "Not enough data for Question 3."
+    if (grouped.isEmpty) return "Not enough data for Question 3."
 
-    val stats = validHotels.map { case ((name, city, country), bookings) =>
+    val stats = grouped.map { case ((name, city, country), bookings) =>
       val visitorValues = bookings.map(_.visitors.toDouble)
       val profitValues = bookings.map(_.profitMargin)
 
