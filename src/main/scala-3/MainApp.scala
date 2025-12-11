@@ -121,12 +121,6 @@ object HotelData {
   }
 }
 
-//steps:
-//1. sorting hotels by name/city/country
-//2. find avg of criterias
-//3. find the min max range from the set of averages
-//4. calculating score
-//5. ranking based on score
 //parent class with formula for Q2 & Q3
 abstract class HotelScoreCalculator extends StringConverter[Booking] {
   //helper case class to hold calculated results
@@ -190,62 +184,68 @@ class HotelCriteria extends HotelScoreCalculator {
       //combine scores
       val econScore = (priceScore + discountScore + profitScore) / 3
 
-      (name, city, country, econScore)
+      (name, city, country, avgPrice, avgDiscount, avgProfit, econScore)
     }
 
     //rank based on score
-    val mostEconomical = scoredHotels.maxBy(_._4)
-    val (name, city, country, score) = mostEconomical
+    val mostEconomical = scoredHotels.maxBy(_._7)
+    val (name, city, country, avgPrice, avgDiscount, avgProfit, score) = mostEconomical
 
-    val result = scoredHotels.sortBy(_._4).reverse.map { case (n, c, s, score) =>
-      f"- $n ($s, $c): $score%.2f%%"
-    }.mkString("\n")
-    f"""The most economical hotel is $name ($city, $country) with an overall score of $score%.2f%%."""
+    f"""$name ($city, $country) - Score $score%.2f%% | Avg Price/Room SGD$avgPrice%.2f | Avg Discount $avgDiscount%.2f%% | Avg Profit Margin $avgProfit%.2f%%
+       |""".stripMargin
   }
 }
 
 class MostProfitableHotel extends HotelScoreCalculator {
   override def convert(data: List[Booking]): String = {
-    if (data.isEmpty) return "No data."
+    if (data.isEmpty)
+      return "No data."
 
     //group record by name, city, country
     val grouped = data.groupBy(b => (b.hotelName, b.destinationCity, b.destinationCountry))
 
-    if (grouped.isEmpty) return "Not enough data for Question 3."
+    val hotelAverages = grouped.map { case (key @ (name, city, country), bookings) =>
+      val totalVisitors = bookings.map(_.visitors.toDouble).sum
+      val avgProfit = bookings.map(_.profitMargin).sum / bookings.size
 
-    val stats = grouped.map { case ((name, city, country), bookings) =>
-      val visitorValues = bookings.map(_.visitors.toDouble)
-      val profitValues = bookings.map(_.profitMargin)
+      (key, totalVisitors, avgProfit)
+    }.toList
 
-      //inherit calculation logic
-      val visitorStats = calculateCriteria(visitorValues)
+    if (hotelAverages.isEmpty)
+      return "Not enough data."
 
-      //average for profit
-      val avgProfit = profitValues.sum / profitValues.size
+    //find min max range
+    val allVisitors = hotelAverages.map(_._2)
+    val allProfits = hotelAverages.map(_._3)
 
-      (name, city, country, visitorStats, avgProfit)
+    val visitorMinMax = (allVisitors.min, allVisitors.max)
+    val profitMinMax = (allProfits.min, allProfits.max)
+
+    //higher visitors/profit margin is better
+    val scoredHotels = hotelAverages.map { case ((name, city, country), totalVisitors, avgProfit) =>
+      val visitorScore = calculateCriteria(totalVisitors, visitorMinMax._1, visitorMinMax._2, lowIsBetter = false)
+      val profitScore = calculateCriteria(avgProfit, profitMinMax._1, profitMinMax._2, lowIsBetter = false)
+
+      //combined score
+      val overallScore = (visitorScore + profitScore) / 2.0
+
+      (name, city, country, totalVisitors, avgProfit, overallScore)
     }
 
-    //find answer by average profit
-    val best = stats.maxBy(_._5)
-    val (name, city, country, vStats, avgProfit) = best
+    //find the hotel with the highest combined score
+    val best = scoredHotels.maxBy(_._6)
+    val (name, city, country, totalVisitors, avgProfit, overallScore) = best
 
-    f"""
-       |The most profitable hotel is $name ($city, $country).
-       |----------------------------------------------------
-       |Average Profit Margin : $avgProfit%.2f%%
-       |Visitor Consistency   : ${vStats.score}%.2f%% (Score based on formula)
-       |Visitor Stats         : Min ${vStats.min.toInt}, Max ${vStats.max.toInt}, Avg ${vStats.avg}%.1f
-       |""".stripMargin
+    f"""|$name ($city, $country) - Score $overallScore%.2f%% | Total Visitors $totalVisitors%.0f | Avg Profit Margin $avgProfit%.2f%%
+        |""".stripMargin
   }
 }
-
 
 //main execution
 object MainApp {
   def main(args: Array[String]): Unit = {
     //define filepath to dataset
-    val filePath = "C:\\Users\\ILLEGEAR\\Downloads\\Hotel_Dataset.csv"
+    val filePath = "/Users/tim/Downloads/Hotel_Dataset.csv"
     val dataset: List[Booking] = HotelData.loadHotelDataset(filePath)
 
     //print error if dataset fails to load
@@ -264,13 +264,13 @@ object MainApp {
     println(s"${q1._1} has the highest number of bookings (${q1._2}) in the dataset.")
 
     //question 2
-    println("\nQuestion 2 - The Most Economical Hotel")
+    println("\nQuestion 2 - Most Economical Hotel")
     val criteria: StringConverter[Booking] = new HotelCriteria()
     println(criteria.convert(dataset))
 
     //question 3
-    println("\nQuestion 3 - The Most Profitable Hotel")
-    val hotelProfit: StringConverter[Booking] = new MostProfitableHotel()
-    println(hotelProfit.convert(dataset))
+    println("\nQuestion 3 - Most Profitable Hotel")
+    val hotelProfitCombined: StringConverter[Booking] = new MostProfitableHotel()
+    println(hotelProfitCombined.convert(dataset))
   }
 }
